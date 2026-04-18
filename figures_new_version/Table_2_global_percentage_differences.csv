@@ -1,0 +1,10 @@
+Comparison,FCEV (%),FCTR (%),FGEV (%),ET (%),FSH (%)
+GEDI Mean vs CLM Default,-1.8180,+2.8082,-1.8754,+1.1051,-3.6427
+GEDI Max vs CLM Default,+2.3969,-2.2601,+1.5358,-0.6740,+1.0463
+GEDI Median vs CLM Default,-1.4566,+2.4244,-1.5564,+0.9884,-3.1374
+GEDI Max vs GEDI Mean,+4.2929,-4.9299,+3.4764,-1.7596,+4.8662
+GEDI Median vs GEDI Mean,+0.3681,-0.3734,+0.3251,-0.1154,+0.5244
+Default 0.8 vs CLM Default,-2.9818,+3.7574,-1.9296,+1.4350,-2.5006
+Default 0.9 vs CLM Default,-1.4844,+1.9491,-0.9802,+0.7614,-1.2999
+Default 1.1 vs CLM Default,+1.4733,-2.0451,+1.0014,-0.8218,+1.3615
+Default 1.2 vs CLM Default,+2.9392,-4.1463,+1.9955,-1.6819,+2.7584
