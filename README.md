@@ -19,7 +19,18 @@ Forest canopy height is a fundamental control on aerodynamic conductance and sur
 - **Forcing**: GSWP3 (3-hourly, 2001-2010, looped every 10 years)
 - **Run length**: 40 years (30-year spinup + 10-year analysis)
 - **Analysis period**: Last 10 years (climatological mean over one full forcing cycle)
-- **Height modification**: Both canopy top height (`MONTHLY_HEIGHT_TOP`) and canopy bottom height (`MONTHLY_HEIGHT_BOT`) are modified in the CLM5 surface dataset. Bottom height is derived from top height using a fixed PFT-specific ratio, preserving the default relationship for each PFT.
+- **Height modification**: Both canopy top height (`MONTHLY_HEIGHT_TOP`) and canopy bottom height (`MONTHLY_HEIGHT_BOT`) are modified in the CLM5 surface dataset. Bottom height is derived from top height using a fixed PFT-specific ratio, preserving the default relationship for each PFT:
+
+  | PFT | Name | HBOT/HTOP ratio |
+  |---|---|---|
+  | 1 | NET Temperate | 0.5000 |
+  | 2 | NET Boreal | 0.5000 |
+  | 3 | NDT Boreal | 0.5000 |
+  | 4 | BET Tropical | 0.0286 |
+  | 5 | BET Temperate | 0.0286 |
+  | 6 | BDT Tropical | 0.5556 |
+  | 7 | BDT Temperate | 0.5750 |
+  | 8 | BDT Boreal | 0.5750 |
 - **Scenarios** (8 total):
   - **Height scaling**: Default, 0.8x, 0.9x, 1.1x, 1.2x (uniform scaling of all forest PFT heights)
   - **Height aggregation**: GEDI Max, GEDI Mean, GEDI Median (ETH canopy height aggregated at 500 m)
@@ -30,7 +41,7 @@ Forest canopy height is a fundamental control on aerodynamic conductance and sur
 - **GEDI-derived**: Lang et al. (2023), ETH Global Canopy Height at 10 m resolution (circa 2020)
 - **PFT map**: 500 m WGS84, derived from MODIS land cover using [build_surface_dataset_for_ELM](https://github.com/daleihao/build_surface_dataset_for_ELM) (`ELM_PFT_{year}-WGS84-merged.tif`; PFTs 1-8 are trees)
 - Two-step aggregation: (1) 10 m canopy height aggregated to 500 m PFT grid using max, mean, or median; (2) 500 m PFT heights averaged to CLM5 1.9 x 2.5 degree grid
-- Height thresholds applied during Step 1: > 0 m and < 90 m (excludes non-vegetated pixels and outliers)
+- Height threshold applied during Step 1: > 0 m (excludes non-vegetated pixels and no-data values)
 
 ## Repository Structure
 
@@ -43,11 +54,16 @@ Forest canopy height is a fundamental control on aerodynamic conductance and sur
 | `generate_tables.py` | Global and PFT-scale statistical summary tables (CSV) |
 | `generate_all_figures.py` | Combined figure generation and old-vs-new comparison analysis |
 
-### Canopy Height Preprocessing
+### Canopy Height Preprocessing (`canopy_height_preprocessing/`)
 
-| Script | Description |
+Reference scripts used to aggregate ETH 10 m canopy height to the CLM5
+grid per PFT and to modify the CLM5 surface data. See the folder's README
+for full workflow details.
+
+| File | Description |
 |---|---|
-| `canopy_height_aggregation.py` | Two-step aggregation: (1) 10 m canopy height to 500 m PFT grid using max/mean/median with thresholds >0 m, <90 m; (2) 500 m to CLM5 grid. Modifies both `MONTHLY_HEIGHT_TOP` and `MONTHLY_HEIGHT_BOT`. |
+| `input_data_generation_hangkai.py` | Python reference: 500 m canopy height + 500 m PFT map -> CLM5 1.9 x 2.5 grid per PFT; writes modified surfdata. |
+| `cht_with_pft.m` | MATLAB equivalent of the same aggregation logic. |
 
 ### Legacy Notebooks
 
