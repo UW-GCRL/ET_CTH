@@ -1,12 +1,16 @@
 """
 Canopy Height Aggregation for CLM5 Surface Data
 
-Aggregates 10 m ETH Global Canopy Height (Lang et al., 2023) to CLM5 grid
-resolution (1.9 x 2.5 degrees) per PFT using max, mean, and median statistics.
+Two-step aggregation of 10 m ETH Global Canopy Height (Lang et al., 2023)
+to CLM5 grid resolution (1.9 x 2.5 degrees) per PFT:
 
-Height thresholds:
-  - Lower bound: > 0 m (excludes non-vegetated / no-data pixels)
-  - Upper bound: < 90 m (excludes unrealistic outliers)
+  Step 1: 10 m canopy height -> 500 m PFT grid
+          Within each 500 m PFT cell, aggregate all valid 10 m pixels
+          (height > 0 m and < 90 m) using max, mean, or median.
+
+  Step 2: 500 m PFT grid -> CLM5 1.9 x 2.5 degree grid
+          Average the 500 m aggregated heights within each CLM5 grid cell
+          for each PFT.
 
 Both MONTHLY_HEIGHT_TOP and MONTHLY_HEIGHT_BOT are modified. Bottom height
 is derived from top height using a fixed PFT-specific ratio, preserving the
@@ -20,9 +24,9 @@ Usage:
         --output_dir <output_directory>
 
 Outputs:
-    - Max_surfdata.nc   (aggregation using maximum height)
-    - Mean_surfdata.nc  (aggregation using mean height)
-    - Median_surfdata.nc (aggregation using median height)
+    - Max_surfdata.nc   (aggregation using maximum height at 500 m)
+    - Mean_surfdata.nc  (aggregation using mean height at 500 m)
+    - Median_surfdata.nc (aggregation using median height at 500 m)
 """
 import numpy as np
 import argparse
@@ -72,77 +76,129 @@ def load_raster(filepath):
     return data, height, width, transform
 
 
-def aggregate_to_clm_grid(canopy_height, pft_map, pft_id, method='mean'):
+def step1_aggregate_10m_to_500m(canopy_height_10m, pft_map_500m, pft_id, method='mean'):
     """
-    Aggregate 10m canopy height to CLM5 grid for a specific PFT.
+    Step 1: Aggregate 10 m canopy height to 500 m PFT grid.
+
+    For each 500 m PFT pixel that matches pft_id, collect all overlapping
+    10 m canopy height pixels with valid height (>0 m and <90 m), then
+    compute the max, mean, or median.
 
     Parameters
     ----------
-    canopy_height : 2D array, canopy height in meters (10m resolution)
-    pft_map : 2D array, PFT classification (same resolution as canopy_height)
+    canopy_height_10m : 2D array, canopy height in meters (10 m resolution)
+    pft_map_500m : 2D array, PFT classification (500 m resolution)
     pft_id : int, PFT index to aggregate
     method : str, one of 'max', 'mean', 'median'
 
     Returns
     -------
-    grid : 2D array (NLAT, NLON), aggregated height values
-    count : 2D array (NLAT, NLON), number of valid pixels per grid cell
+    height_500m : 2D array (same shape as pft_map_500m), aggregated height
     """
-    nrows, ncols = canopy_height.shape
-    grid = np.zeros((NLON, NLAT))
-    count = np.zeros((NLON, NLAT), dtype=np.int64)
+    pft_h, pft_w = pft_map_500m.shape
+    ch_h, ch_w = canopy_height_10m.shape
 
-    # For max/median, we need to collect all values per grid cell
-    if method in ('max', 'median'):
-        cell_values = [[[] for _ in range(NLAT)] for _ in range(NLON)]
+    # Ratio of 10 m pixels per 500 m pixel (500/10 = 50 pixels per side)
+    ratio_y = ch_h / pft_h
+    ratio_x = ch_w / pft_w
+
+    height_500m = np.zeros((pft_h, pft_w), dtype=np.float32)
+
+    for j in range(pft_h):
+        if j % (pft_h // 10) == 0:
+            print(f"    {int(j / pft_h * 100)}%...")
+
+        for i in range(pft_w):
+            # Only process pixels matching the target PFT
+            if pft_map_500m[j, i] != pft_id:
+                continue
+
+            # Determine the 10 m pixel range for this 500 m cell
+            y_start = int(j * ratio_y)
+            y_end = int((j + 1) * ratio_y)
+            x_start = int(i * ratio_x)
+            x_end = int((i + 1) * ratio_x)
+
+            # Clip to bounds
+            y_end = min(y_end, ch_h)
+            x_end = min(x_end, ch_w)
+
+            # Extract 10 m pixels within this 500 m cell
+            block = canopy_height_10m[y_start:y_end, x_start:x_end]
+
+            # Apply height thresholds
+            valid = block[(block > HEIGHT_MIN) & (block < HEIGHT_MAX)]
+
+            if len(valid) == 0:
+                continue
+
+            if method == 'max':
+                height_500m[j, i] = np.max(valid)
+            elif method == 'mean':
+                height_500m[j, i] = np.mean(valid)
+            elif method == 'median':
+                height_500m[j, i] = np.median(valid)
+
+    return height_500m
+
+
+def step2_aggregate_500m_to_clm(height_500m, pft_map_500m, pft_id):
+    """
+    Step 2: Aggregate 500 m PFT height grid to CLM5 1.9 x 2.5 degree grid.
+
+    For each CLM5 grid cell, compute the mean of all valid 500 m pixels
+    that match the target PFT.
+
+    Parameters
+    ----------
+    height_500m : 2D array, aggregated canopy height at 500 m
+    pft_map_500m : 2D array, PFT classification at 500 m
+    pft_id : int, PFT index
+
+    Returns
+    -------
+    grid : 2D array (NLON, NLAT), mean height per CLM5 grid cell
+    count : 2D array (NLON, NLAT), number of valid 500 m pixels per cell
+    """
+    pft_h, pft_w = pft_map_500m.shape
+
+    grid_sum = np.zeros((NLON, NLAT))
+    grid_count = np.zeros((NLON, NLAT), dtype=np.int64)
 
     # Mask: valid height and matching PFT
-    valid = (canopy_height > HEIGHT_MIN) & (canopy_height < HEIGHT_MAX) & (pft_map == pft_id)
-
-    # Map pixels to CLM grid cells
+    valid = (height_500m > 0) & (pft_map_500m == pft_id)
     rows, cols = np.where(valid)
+
     for idx in range(len(rows)):
-        i, j = rows[idx], cols[idx]
-        # Map to CLM grid (assuming global coverage)
-        gx = int((j / ncols) * NLON)
-        gy = int((i / nrows) * NLAT)
+        j, i = rows[idx], cols[idx]
+        # Map 500 m pixel to CLM5 grid cell
+        gx = int((i / pft_w) * NLON)
+        gy = int((j / pft_h) * NLAT)
         gx = min(gx, NLON - 1)
         gy = min(gy, NLAT - 1)
 
-        h = canopy_height[i, j]
+        grid_sum[gx, gy] += height_500m[j, i]
+        grid_count[gx, gy] += 1
 
-        if method == 'mean':
-            grid[gx, gy] += h
-            count[gx, gy] += 1
-        elif method in ('max', 'median'):
-            cell_values[gx][gy].append(h)
-            count[gx, gy] += 1
-
-    # Finalize
-    if method == 'mean':
-        mask = count > 0
-        grid[mask] = grid[mask] / count[mask]
-    elif method == 'max':
-        for gx in range(NLON):
-            for gy in range(NLAT):
-                if cell_values[gx][gy]:
-                    grid[gx, gy] = np.max(cell_values[gx][gy])
-    elif method == 'median':
-        for gx in range(NLON):
-            for gy in range(NLAT):
-                if cell_values[gx][gy]:
-                    grid[gx, gy] = np.median(cell_values[gx][gy])
+    # Compute mean
+    grid = np.zeros((NLON, NLAT))
+    mask = grid_count > 0
+    grid[mask] = grid_sum[mask] / grid_count[mask]
 
     # Flip latitude (raster convention -> CLM convention)
     grid = np.fliplr(grid)
-    count = np.fliplr(count)
+    grid_count = np.fliplr(grid_count)
 
-    return grid, count
+    return grid, grid_count
 
 
 def update_surfdata(surfdata_path, output_path, height_grids):
     """
     Update CLM5 surface data with new canopy heights.
+
+    Both MONTHLY_HEIGHT_TOP and MONTHLY_HEIGHT_BOT are updated.
+    Bottom height is derived from top height using the original
+    PFT-specific ratio (bottom/top) from the default surface data.
 
     Parameters
     ----------
@@ -161,13 +217,13 @@ def update_surfdata(surfdata_path, output_path, height_grids):
         hbot = ds.variables['MONTHLY_HEIGHT_BOT'][:]
 
         for pft_id, new_height in height_grids.items():
-            # CLM PFT index is 0-based in the array, but pft_id is 1-based
-            pft_idx = pft_id  # PFT dimension index (bare soil=0, so PFT1=index 1)
+            # PFT dimension index (bare soil=0, so forest PFT 1 = index 1)
+            pft_idx = pft_id
 
             for a in range(NLON):
                 for b in range(NLAT):
                     if htop[a, b, pft_idx, 0] > 0 and new_height[a, b] > 0:
-                        # Compute ratio of bottom/top from original
+                        # Preserve bottom/top ratio from original data
                         old_top = htop[a, b, pft_idx, 0]
                         old_bot = hbot[a, b, pft_idx, 0]
                         ratio = old_bot / old_top if old_top > 0 else 0
@@ -188,12 +244,12 @@ def update_surfdata(surfdata_path, output_path, height_grids):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Aggregate 10m canopy height to CLM5 grid per PFT"
+        description="Two-step aggregation of 10m canopy height to CLM5 grid per PFT"
     )
     parser.add_argument('--canopy_height', required=True,
                         help='Path to 10m canopy height GeoTIFF')
     parser.add_argument('--pft_map', required=True,
-                        help='Path to PFT classification GeoTIFF (500m)')
+                        help='Path to 500m PFT map GeoTIFF (e.g. ELM_PFT_{year}-WGS84-merged.tif from build_surface_dataset_for_ELM)')
     parser.add_argument('--surfdata', required=True,
                         help='Path to CLM5 surface data NC file')
     parser.add_argument('--output_dir', required=True,
@@ -202,39 +258,58 @@ def main():
 
     os.makedirs(args.output_dir, exist_ok=True)
 
-    print("Loading canopy height raster...")
-    canopy_height, ch_h, ch_w, _ = load_raster(args.canopy_height)
-    print(f"  Shape: {canopy_height.shape}")
+    print("Loading 10m canopy height raster...")
+    canopy_height_10m, ch_h, ch_w, _ = load_raster(args.canopy_height)
+    print(f"  Shape: {canopy_height_10m.shape}")
 
-    print("Loading PFT map...")
-    pft_map, pft_h, pft_w, _ = load_raster(args.pft_map)
-    print(f"  Shape: {pft_map.shape}")
-
-    # Resize PFT map to match canopy height if needed
-    if pft_map.shape != canopy_height.shape:
-        from scipy.ndimage import zoom
-        zoom_factors = (ch_h / pft_h, ch_w / pft_w)
-        print(f"  Resampling PFT map with zoom factors: {zoom_factors}")
-        pft_map = zoom(pft_map, zoom_factors, order=0)  # nearest neighbor
+    print("Loading 500m PFT map...")
+    pft_map_500m, pft_h, pft_w, _ = load_raster(args.pft_map)
+    print(f"  Shape: {pft_map_500m.shape}")
 
     methods = ['max', 'mean', 'median']
 
     for method in methods:
-        print(f"\nAggregating with method: {method}")
+        print(f"\n{'='*60}")
+        print(f"Aggregation method: {method.upper()}")
+        print(f"{'='*60}")
         height_grids = {}
 
         for pft_id, pft_name in FOREST_PFTS.items():
-            print(f"  PFT {pft_id} ({pft_name})...")
-            grid, count = aggregate_to_clm_grid(canopy_height, pft_map, pft_id, method=method)
-            n_valid = np.sum(count > 0)
-            print(f"    Valid grid cells: {n_valid}, Mean height: {np.mean(grid[grid > 0]):.1f} m")
+            print(f"\n  PFT {pft_id} ({pft_name}):")
+
+            # Step 1: 10m -> 500m
+            print(f"  Step 1: Aggregating 10m -> 500m ({method})...")
+            height_500m = step1_aggregate_10m_to_500m(
+                canopy_height_10m, pft_map_500m, pft_id, method=method
+            )
+            n_valid_500m = np.sum(height_500m > 0)
+            if n_valid_500m > 0:
+                print(f"    Valid 500m pixels: {n_valid_500m}, "
+                      f"Mean: {np.mean(height_500m[height_500m > 0]):.1f} m")
+            else:
+                print(f"    No valid pixels found.")
+
+            # Step 2: 500m -> CLM5 grid
+            print(f"  Step 2: Aggregating 500m -> CLM5 grid (mean)...")
+            grid, count = step2_aggregate_500m_to_clm(
+                height_500m, pft_map_500m, pft_id
+            )
+            n_valid_clm = np.sum(count > 0)
+            if n_valid_clm > 0:
+                print(f"    Valid CLM5 cells: {n_valid_clm}, "
+                      f"Mean: {np.mean(grid[grid > 0]):.1f} m")
+            else:
+                print(f"    No valid CLM5 cells.")
+
             height_grids[pft_id] = grid
 
+        # Step 3: Update surface data
         output_path = os.path.join(args.output_dir, f"{method.capitalize()}_surfdata.nc")
-        print(f"  Updating surface data...")
+        print(f"\n  Step 3: Updating CLM5 surface data...")
         update_surfdata(args.surfdata, output_path, height_grids)
 
-    print("\nDone! Output files:")
+    print(f"\n{'='*60}")
+    print("Done! Output files:")
     for method in methods:
         print(f"  {os.path.join(args.output_dir, f'{method.capitalize()}_surfdata.nc')}")
 

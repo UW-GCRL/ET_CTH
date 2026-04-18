@@ -28,8 +28,9 @@ Forest canopy height is a fundamental control on aerodynamic conductance and sur
 
 - **Default (ICESat)**: Simard et al. (2011), based on ICESat-1 GLAS (2003-2009)
 - **GEDI-derived**: Lang et al. (2023), ETH Global Canopy Height at 10 m resolution (circa 2020)
-- Upscaled to CLM5 grid using three aggregation methods (max, mean, median) per PFT
-- Height thresholds applied during aggregation: > 0 m and < 90 m (excludes non-vegetated pixels and outliers)
+- **PFT map**: 500 m WGS84, derived from MODIS land cover using [build_surface_dataset_for_ELM](https://github.com/daleihao/build_surface_dataset_for_ELM) (`ELM_PFT_{year}-WGS84-merged.tif`; PFTs 1-8 are trees)
+- Two-step aggregation: (1) 10 m canopy height aggregated to 500 m PFT grid using max, mean, or median; (2) 500 m PFT heights averaged to CLM5 1.9 x 2.5 degree grid
+- Height thresholds applied during Step 1: > 0 m and < 90 m (excludes non-vegetated pixels and outliers)
 
 ## Repository Structure
 
@@ -46,7 +47,7 @@ Forest canopy height is a fundamental control on aerodynamic conductance and sur
 
 | Script | Description |
 |---|---|
-| `canopy_height_aggregation.py` | Aggregates 10 m ETH canopy height to CLM5 grid per PFT using max, mean, and median. Applies height thresholds (>0 m, <90 m). Modifies both `MONTHLY_HEIGHT_TOP` and `MONTHLY_HEIGHT_BOT` in CLM5 surface data. |
+| `canopy_height_aggregation.py` | Two-step aggregation: (1) 10 m canopy height to 500 m PFT grid using max/mean/median with thresholds >0 m, <90 m; (2) 500 m to CLM5 grid. Modifies both `MONTHLY_HEIGHT_TOP` and `MONTHLY_HEIGHT_BOT`. |
 
 ### Legacy Notebooks
 
