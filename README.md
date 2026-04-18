@@ -44,13 +44,11 @@ Forest canopy height is a fundamental control on aerodynamic conductance and sur
 | `generate_tables.py` | Global and PFT-scale statistical summary tables (CSV) |
 | `generate_all_figures.py` | Combined figure generation and old-vs-new comparison analysis |
 
-### MATLAB Preprocessing (`matlab_preprocessing/`)
+### Canopy Height Preprocessing
 
 | Script | Description |
 |---|---|
-| `cth_with_pft.m` | Aggregates 10 m canopy height to CLM5 grid per PFT with height thresholds (>0 m, <90 m) |
-| `upscale_cth.m` | Upscales canopy height with PFT masking at 500 m |
-| `CTH_for_surface_data_replace.m` | Replaces `MONTHLY_HEIGHT_TOP` and `MONTHLY_HEIGHT_BOT` in CLM5 surface data with GEDI-derived heights |
+| `canopy_height_aggregation.py` | Aggregates 10 m ETH canopy height to CLM5 grid per PFT using max, mean, and median. Applies height thresholds (>0 m, <90 m). Modifies both `MONTHLY_HEIGHT_TOP` and `MONTHLY_HEIGHT_BOT` in CLM5 surface data. |
 
 ### Legacy Notebooks
 
