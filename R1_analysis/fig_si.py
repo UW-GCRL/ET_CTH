@@ -80,8 +80,8 @@ def fig_years():
     axes[0].set_yticks(range(len(keys))); axes[0].set_yticklabels(keys, fontsize=6.5); axes[0].invert_yaxis()
     axes[-1].plot([], [], 'o', color=CAT[0], ms=3, label='10-yr mean (cycle 4)'); axes[-1].plot([], [], 'x', color=CAT[1], ms=3, label='10-yr mean (cycle 3)')
     axes[-1].plot([], [], color='0.3', lw=1.6, label='range of single years')
-    axes[-1].legend(frameon=False, fontsize=6, loc='lower right')
-    fig.tight_layout(); save(fig, 'FigureS_forcing_year_robustness')
+    fig.legend(*axes[-1].get_legend_handles_labels(), frameon=False, fontsize=6.5, loc='lower center', ncol=3)   # below the panels, clear of the data
+    fig.tight_layout(rect=(0, 0.06, 1, 1)); save(fig, 'FigureS_forcing_year_robustness')
 
 
 # ------------------------------------------------ emulator validation + stomatal diagnostic
