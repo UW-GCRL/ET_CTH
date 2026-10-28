@@ -8,9 +8,11 @@ Hangkai You, Fa Li, Dalei Hao, Benjamin Dechant, Zhenpeng Zuo, Taejin Park, Meng
 
 *Corresponding author: min.chen@wisc.edu*
 
+The results, tables and figures of the revised manuscript are produced by the scripts in [`R1_analysis/`](R1_analysis/). The scripts in the repository root and the notebooks are those of the first submission (see [First-submission scripts](#first-submission-scripts)).
+
 ## Abstract
 
-Forest canopy height is a fundamental control on aerodynamic conductance and surface energy partitioning, but its influence on evapotranspiration (ET) at a global scale remains under-investigated. We combined biophysical theory with Community Land Model version 5 (CLM5) simulations to quantify how canopy height affects the magnitude and partitioning of global forest ET. By uniformly scaling canopy height by up to +/-20%, we first establish the intrinsic sensitivity of ET to canopy structure: a 20% increase in canopy height reduces global transpiration by 4.15% while increasing canopy evaporation by 2.94%, as enhanced aerodynamic conductance shifts energy partitioning between latent and sensible heat fluxes. We then prescribe canopy height fields derived from GEDI (circa 2020) and ICESat-1 GLAS (2003-2009) to assess how differences in data source, observation epoch, and spatial aggregation statistics (maximum, mean, median) propagate into simulated ET. The ET response to canopy height is strongly biome dependent: tropical forests are comparatively insensitive despite large height contrasts, whereas semi-arid and temperate forests show much stronger responses because aerodynamic effects interact with moisture limitation and stomatal regulation. Differences among canopy height datasets and aggregation statistics produced up to 1.76% divergence in global ET and up to 4.93% in individual flux components such as transpiration, with substantially larger differences at regional and biome scales, revealing a previously overlooked source of structural uncertainty. Our results highlight the need for updated canopy height constraints and standardized aggregation protocols to reduce structural uncertainty in the representation of vegetation-atmosphere coupling in Earth system models.
+Forest canopy height is a fundamental control on aerodynamic conductance and surface energy partitioning, but its global influence on evapotranspiration (ET) remains under-investigated. We combined a Penman–Monteith-based analysis with controlled sensitivity experiments in the Community Land Model version 5 (CLM5) to quantify how prescribed canopy height affects the magnitude and partitioning of global forest ET. Uniformly scaling canopy height by up to ±20% in a fixed CLM5 configuration showed that a 20% canopy height increase reduces global forest transpiration by 4.35% and increases canopy and ground evaporation by 2.87% and 2.14%, reducing total forest ET by 1.94%. These changes reflect a repartitioning of available energy toward sensible heat, and the transpiration decrease occurred mainly through lower stomatal conductance. We then prescribed canopy height fields derived from GEDI (circa 2020), aggregated with the maximum, mean and median, and compared them with the default CLM5 heights derived from ICESat-1 GLAS (2005). Differences among canopy height inputs changed global forest ET and transpiration by up to 1.99% and 4.95%, and the choice of aggregation statistic alone produced differences comparable to a uniform 20% change in canopy height. Every global difference had the same sign in each of ten forcing years, and all but one remained significant after accounting for spatial autocorrelation. Responses differed among plant functional types: for the same relative change in canopy height, transpiration and total ET responded most strongly in tropical broadleaf evergreen forests (−5.7% and −2.7% for a 20% increase), whereas in needleleaf forests the changes in evaporation and transpiration largely offset, leaving total ET nearly unchanged. These results quantify the sensitivity of a land surface model to canopy height inputs and identify the data source and aggregation of canopy height as a source of structural uncertainty in simulated ET that should be tested across models.
 
 ## Model Configuration
 
@@ -32,27 +34,24 @@ Forest canopy height is a fundamental control on aerodynamic conductance and sur
   | 7 | BDT Temperate | 0.5750 |
   | 8 | BDT Boreal | 0.5750 |
 - **Scenarios** (8 total):
-  - **Height scaling**: Default, 0.8x, 0.9x, 1.1x, 1.2x (uniform scaling of all forest PFT heights)
-  - **Height aggregation**: GEDI Max, GEDI Mean, GEDI Median (ETH canopy height aggregated at 500 m)
+  - **Height scaling**: Default, 0.8x, 0.9x, 1.1x, 1.2x (uniform scaling of the heights of all natural vegetation PFTs: trees, shrubs and grasses)
+  - **Height aggregation**: GEDI Max, GEDI Mean, GEDI Median (ETH canopy height aggregated at 500 m; only the heights of the eight forest PFTs are replaced)
 
 ## Canopy Height Data
 
 - **Default (ICESat)**: Simard et al. (2011), based on ICESat-1 GLAS (2003-2009)
 - **GEDI-derived**: Lang et al. (2023), ETH Global Canopy Height at 10 m resolution (circa 2020)
 - **PFT map**: 500 m WGS84, derived from MODIS land cover using [build_surface_dataset_for_ELM](https://github.com/daleihao/build_surface_dataset_for_ELM) (`ELM_PFT_{year}-WGS84-merged.tif`; PFTs 1-8 are trees)
-- Two-step aggregation: (1) 10 m canopy height aggregated to 500 m PFT grid using max, mean, or median; (2) 500 m PFT heights averaged to CLM5 1.9 x 2.5 degree grid
+- Two-step aggregation: (1) 10 m canopy height aggregated to the 500 m grid using max, mean, or median; (2) for each forest PFT, the 500 m heights of all pixels of that PFT averaged with equal weight within fixed blocks of 450 x 600 pixels (1.875 x 2.5 degrees at the 1/240 degree pixel size; 96 x 144 blocks, one for each model grid cell). Where a forest PFT of the CLM5 surface dataset was absent from the 500 m PFT map within the block, the CLM5 default height was retained.
 - Height threshold applied during Step 1: > 0 m (excludes non-vegetated pixels and no-data values)
 
 ## Repository Structure
 
-### Python Analysis Scripts
+### Revised manuscript (`R1_analysis/`)
 
-| Script | Description |
-|---|---|
-| `generate_maps_v3.py` | Spatial maps: experimental scenarios (CLM Default absolute + % diff), multisource scenarios, absolute difference (W/m2), absolute values (mm/month) |
-| `generate_heatmaps_v2.py` | PFT-level heatmaps (2x2) with paired t-test significance markers |
-| `generate_tables.py` | Global and PFT-scale statistical summary tables (CSV) |
-| `generate_all_figures.py` | Combined figure generation and old-vs-new comparison analysis |
+Scripts for all results, tables and figures of the revised manuscript: diagnostics and robustness checks, spatial-autocorrelation-aware significance tests, canopy height statistics and the height-flux emulator, the figure scripts, and `make_tables.py`, which writes Table 1 and Tables S1 to S4 to [`R1_analysis/tables/`](R1_analysis/tables/). See the folder's README for the inputs, the run order and which script produces which result.
+
+Global and PFT-level means are weighted by the land area of each patch (`pfts1d_wtgcell` x `area` x `landfrac`). In CLM5 output, `area` is the area of the whole grid cell and `pfts1d_wtgcell` is a fraction of the land part of the cell.
 
 ### Canopy Height Preprocessing (`canopy_height_preprocessing/`)
 
@@ -65,7 +64,16 @@ for full workflow details.
 | `input_data_generation_hangkai.py` | Python reference: 500 m canopy height + 500 m PFT map -> CLM5 1.9 x 2.5 grid per PFT; writes modified surfdata. |
 | `cht_with_pft.m` | MATLAB equivalent of the same aggregation logic. |
 
-### Legacy Notebooks
+### First-submission scripts
+
+The scripts and notebooks below produced the results of the first submission. Those that compute global or PFT-level means (`generate_tables.py`, `generate_heatmaps_v2.py`, `generate_all_figures.py`, `Percentage_Calculation.ipynb` and `Figure_5_Bar_Chart.ipynb`) weight grid cells by the whole grid-cell `area`, without the land fraction, so their means differ slightly from those of the revised manuscript; use `R1_analysis/` for the revised results.
+
+| Script | Description |
+|---|---|
+| `generate_maps_v3.py` | Spatial maps: experimental scenarios (CLM Default absolute + % diff), multisource scenarios, absolute difference (W/m2), absolute values (mm/month) |
+| `generate_heatmaps_v2.py` | PFT-level heatmaps (2x2) with paired t-test significance markers |
+| `generate_tables.py` | Global and PFT-scale statistical summary tables (CSV) |
+| `generate_all_figures.py` | Combined figure generation and old-vs-new comparison analysis |
 
 | Notebook | Description |
 |---|---|
@@ -76,17 +84,19 @@ for full workflow details.
 | `Figure_4_ET_Spatial_Maps.ipynb` | ET differences across GEDI vs. CLM Default |
 | `Figure_5_Bar_Chart.ipynb` | Bar chart of ET component differences across PFTs |
 
-### Output (`figures_new_version/`)
+Output of the first submission (`figures_new_version/`):
 
 - Spatial maps (TIFF): experimental scenarios, multisource scenarios, absolute values, absolute differences
 - PFT heatmaps (PNG): percentage differences, absolute differences, absolute values with significance markers
 - Statistical tables (CSV): global and PFT-level absolute values, percentage and absolute differences
 
-## Statistical Methods
+## Statistical Methods (revised manuscript)
 
-- **Global comparisons**: Area-weighted means across forested grid cells
-- **PFT-level comparisons**: Weighted by PFT fractional area (`pfts1d_wtgcell`) and grid cell area
-- **Significance testing**: Paired Wilcoxon signed-rank tests (global) and paired t-tests (PFT-level) using 10 annual means from the analysis period
+- **Global and PFT-level means**: weighted by patch land area (`pfts1d_wtgcell` x `area` x `landfrac`); relative differences are ratios of these means
+- **Spatial autocorrelation**: Moran's I of the grid-cell differences and an effective sample size from the correlation of each cell with the mean of its eight neighbors
+- **Significance testing**: t-test with the effective sample size, and a Wilcoxon signed-rank test on block-mean differences (blocks of about 10 x 10 degrees), with Benjamini-Hochberg FDR adjustment; the cell-level Wilcoxon test is reported for reference
+- **Intervals**: 95% intervals of the global relative differences from a spatial block bootstrap (2,000 resamples of 289 blocks)
+- **Robustness**: sign and spread of the differences in each of the ten forcing years, and agreement between the third and fourth forcing cycles
 - **Spatial variability**: Interquartile range (IQR) of grid-cell-level relative differences
 
 ## Variables Analyzed
