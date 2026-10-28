@@ -16,7 +16,7 @@ Forest canopy height is a fundamental control on aerodynamic conductance and sur
 
 ## Model Configuration
 
-- **Model**: CLM5 (Community Land Model version 5) in Satellite Phenology (SP) mode
+- **Model**: CLM5 (Community Land Model version 5) in Satellite Phenology (SP) mode: CTSM tag `ctsm5.2.005` with the CLM5.0 physics option (compset `2000_DATM%GSWP3v1_CLM50%SP_SICE_SOCN_MOSART_SGLC_SWAV_SESP`, parameter file `clm50_params.c240208.nc`). The model code was used unchanged except for one compatibility change in `src/main/surfrdMod.F90` ([`model_mods/surfrdMod.F90.diff`](model_mods/surfrdMod.F90.diff)), which sets `PCT_OCEAN` to zero when it is missing from the surface dataset, as it is in the CLM5.0-format datasets used here.
 - **Resolution**: 1.9 x 2.5 degrees
 - **Forcing**: GSWP3 (3-hourly, 2001-2010, looped every 10 years)
 - **Run length**: 40 years (30-year spinup + 10-year analysis)
