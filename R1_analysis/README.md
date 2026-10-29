@@ -1,7 +1,9 @@
 # Analysis for the revised manuscript
 
-These scripts produce all results, tables and figures of the revised manuscript from the CLM5 output of the eight
-simulations (CLM Default, Default 0.8, 0.9, 1.1 and 1.2, GEDI Max, GEDI Mean and GEDI Median).
+These scripts produce Table 1, Tables S1 to S4, Figures 3 and 5, Figs. S4 to S6 and the model-derived numbers in the
+text of the revised manuscript from the CLM5 output of the eight simulations (CLM Default, Default 0.8, 0.9, 1.1 and
+1.2, GEDI Max, GEDI Mean and GEDI Median). The maps of Figures 2 and 4 and Figs. S2 and S3 are drawn by scripts in the
+repository root (see the [main README](../README.md#figures-and-tables-of-the-revised-manuscript)).
 
 ## Area weighting
 
@@ -29,8 +31,6 @@ Set the paths at the top of `common.py`, or with environment variables:
 | `ETCTH_WORK` | Annual means (2001-2040), monthly climatology (2031-2040) and metadata written by `extract_raw.py` |
 | `ETCTH_FIGURES` | Output folder for the figures (default: `<ETCTH_WORK>/figures/`) |
 
-`an5_tiles.py` reads native 10 m tiles of the ETH Global Canopy Height (Lang et al., 2023).
-
 ## Run order
 
 Run from this folder (the analysis scripts write their results next to themselves):
@@ -45,7 +45,6 @@ Run from this folder (the analysis scripts write their results next to themselve
     python fig_si.py
     python make_tables.py
     python text_numbers.py
-    python an5_tiles.py <tile.tif> <out.json>      # once per 10 m tile
 
 ## Scripts
 
@@ -53,16 +52,15 @@ Run from this folder (the analysis scripts write their results next to themselve
 |---|---|---|
 | `common.py` | Scenario names, loaders, patch weights, grid helpers | all scripts |
 | `extract_raw.py` | PFT-level annual means and monthly climatology from the raw output | inputs of `an1`, `an2`, `fig_si` |
-| `an1_checks.py` | Snow burial of the canopy, spin-up drift (third vs fourth forcing cycle), forcing-year robustness, canopy water balance, energy diagnostics | Section 3.3, Fig. S5, Text S3 |
+| `an1_checks.py` | Snow burial of the canopy, spin-up drift (third vs fourth forcing cycle), forcing-year robustness, canopy water balance, energy diagnostics | Sections 3.1 and 3.3, Fig. S5, Texts S2 and S3 |
 | `an2_seasonal.py` | Seasonal and regional decomposition of the flux changes, implied change in runoff | Section 3.1, Fig. S4 |
 | `an3_spatial.py` | Moran's I, t-test with an effective sample size, spatial block bootstrap, block-level Wilcoxon test, Benjamini-Hochberg FDR | Table 1, Table S3, Section 3.3 |
-| `an4_heights.py` | Canopy height inputs by PFT; patch-level height-flux emulator fitted to the uniform-scaling runs | Section 3.2, Table S4, Fig. S6a,b |
-| `an5_tiles.py` | Sensitivity of the aggregated heights to the intermediate scale, zero-height pixels and outliers | Section 4.3 |
+| `an4_heights.py` | Canopy height inputs by PFT; patch-level height-flux emulator fitted to CLM Default and the four uniform-scaling runs | Sections 3.2 and 3.3, Table S4, Fig. S6a,b |
 | `an6_stomatal.py` | Transpiration and GPP responses by PFT | Section 3.1, Fig. S6c |
-| `fig_main.py` | Figures 2 to 5 and the maps of Figs. S2 and S3 | Figures 2-5, Figs. S2-S3 |
-| `fig_si.py` | Figs. S4 to S6 | Figs. S4-S6 |
+| `fig_main.py` | Figures 3 and 5 (`Figure3_canopy_height_inputs`, `Figure5_PFT_bars`) | Figures 3 and 5 |
+| `fig_si.py` | Figs. S4 to S6 (`FigureS4_canopy_water_balance_seasonal`, `FigureS5_forcing_year_robustness`, `FigureS6_emulator_and_stomatal`) | Figs. S4-S6 |
 | `make_tables.py` | Table 1 and Tables S1 to S4 | `tables/` |
-| `text_numbers.py` | Every model-derived number quoted in the text, written to `text_numbers.json` | Abstract, Sections 3 and 4, Conclusions |
+| `text_numbers.py` | Every model-derived number quoted in the text, including the block tests with blocks of about 5 and 20 degrees, written to `text_numbers.json` | Abstract, Sections 3 and 4, Conclusions, Text S3 |
 
 ## Tables (`tables/`)
 
@@ -73,4 +71,4 @@ Run from this folder (the analysis scripts write their results next to themselve
 | `TableS2_PFT_fluxes_and_differences.csv` | PFT-level fluxes, relative and absolute differences |
 | `TableS3_PFT_significance.csv` | PFT-level differences, intervals, effective sample sizes and FDR-adjusted p-values |
 | `TableS4_canopy_height_inputs.csv` | Canopy height inputs by PFT and the area with the default height retained |
-| `TableS5_CLM5_height_parameters.csv` | Height-related parameters of the forest PFTs (`clm50_params.c240208.nc`) |
+| `TableS5_CLM5_height_parameters.csv` | Height-related parameters of the forest PFTs, taken from the parameter file `clm50_params.c240208.nc` (not computed by these scripts) |
