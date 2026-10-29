@@ -2,3 +2,12 @@
 __pycache__/
 *.pyc
 .DS_Store
+
+# outputs written by the R1_analysis scripts
+R1_analysis/*_results.json
+R1_analysis/an3_results.csv
+R1_analysis/an6_phs_diag.json
+R1_analysis/text_numbers.json
+R1_analysis/emulator_coef.npz
+R1_analysis/figures/
+R1_analysis/log_*.txt

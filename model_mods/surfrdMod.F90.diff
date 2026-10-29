@@ -1,0 +1,18 @@
+diff --git a/src/main/surfrdMod.F90 b/src/main/surfrdMod.F90
+index 12212e216..ffee8e10b 100644
+--- a/src/main/surfrdMod.F90
++++ b/src/main/surfrdMod.F90
+@@ -416,9 +416,10 @@ contains
+ 
+     call ncd_io(ncid=ncid, varname='PCT_OCEAN', flag='read', data=pctocn, &
+          dim1name=grlnd, readvar=readvar)
+-    if (.not. readvar) call endrun( msg= &
+-       ' ERROR: PCT_OCEAN NOT on surfdata file but required when running ctsm5.2 or newer; ' // &
+-       ' you are advised to generate a new surfdata file using the mksurfdata_esmf tool ' // errMsg(sourcefile, __LINE__))
++    if (.not. readvar) then
++       write(iulog,*) ' WARNING: PCT_OCEAN not on surfdata file, setting to zero (CLM5.0 compat)'
++       pctocn(:) = 0.0_r8
++    end if
+ 
+     call ncd_io(ncid=ncid, varname='PCT_WETLAND', flag='read', data=pctwet, &
+          dim1name=grlnd, readvar=readvar)
