@@ -1,9 +1,11 @@
-"""Revised main-text figures 2-5 and related SI figures for AFM R1.
-Conventions (stated in captions):
- * fluxes are water fluxes from CLM5's native water-flux outputs (QVEGE, QVEGT, and
-   QFLX_EVAP_TOT - QVEGE - QVEGT for ground evaporation), mm yr-1;
- * map values are per unit forest area within each grid cell (forest-PFT-weighted mean);
- * maps are drawn cell by cell (no interpolation) on the CLM5 1.9x2.5 grid.
+"""Figures 3 and 5 of the revised manuscript (AFM R1).
+Conventions:
+ * Figure 3: map values are the forest-area-weighted mean canopy height of the forest PFTs in each grid cell,
+   drawn cell by cell (no interpolation) on the CLM5 1.9x2.5 grid;
+ * Figure 5: relative differences of the PFT-area-weighted decade means, from CLM5's native water-flux outputs
+   (QVEGE, QVEGT, and QFLX_EVAP_TOT - QVEGE - QVEGT for ground evaporation); whiskers are the area-weighted
+   interquartile range of the grid-cell relative differences.
+The maps of Figures 2 and 4 and Figs. S2 and S3 are drawn by scripts in the repository root (see the README).
 """
 import os, json
 import numpy as np
@@ -34,7 +36,6 @@ lone_s = np.concatenate([lon_s - 1.25, [lon_s[-1] + 1.25]])
 
 FLX = {'ET': 'ET_w', 'FCEV': 'E_can', 'FCTR': 'T', 'FGEV': 'E_gnd'}
 LBL = {'ET': 'ET', 'FCEV': 'Canopy evaporation (FCEV)', 'FCTR': 'Transpiration (FCTR)', 'FGEV': 'Ground evaporation (FGEV)'}
-SHORT = {'ET': 'ET', 'FCEV': 'FCEV', 'FCTR': 'FCTR', 'FGEV': 'FGEV'}
 
 
 def fgrid(vec):
@@ -58,71 +59,10 @@ def pmesh(ax, data, cmap, norm):
                          transform=ccrs.PlateCarree(), rasterized=True, shading='flat')
 
 
-div_levels = np.array([-10, -8, -6, -4, -2, -0.5, 0.5, 2, 4, 6, 8, 10])
-base = plt.get_cmap('RdBu_r')(np.linspace(0, 1, len(div_levels) + 1))
-base[len(div_levels) // 2] = (0.93, 0.93, 0.93, 1)   # neutral grey midpoint
-div_cmap = ListedColormap(base[1:-1]); div_cmap.set_under(base[0]); div_cmap.set_over(base[-1])
-div_norm = BoundaryNorm(div_levels, div_cmap.N)
-
-abs_levels = np.array([0, 50, 100, 200, 300, 400, 500, 600, 800, 1000, 1200, 1400])
-ac = plt.get_cmap('Purples')(np.linspace(0.12, 1, len(abs_levels) - 1))
-abs_cmap = ListedColormap(ac); abs_cmap.set_under('#b35806'); abs_cmap.set_over(ac[-1])
-abs_norm = BoundaryNorm(abs_levels, abs_cmap.N)
-
-
-def rel(a, b, v):
-    A = fgrid(D[a][FLX[v]]); B = fgrid(D[b][FLX[v]])
-    with np.errstate(all='ignore'):
-        r = 100 * (A - B) / np.abs(B)
-    r[np.abs(B) < 1.0] = np.nan     # undefined where the baseline flux is < 1 mm/yr in magnitude
-    return r
-
-
 def save(fig, name):
     fig.savefig(OUT + name + '.png', dpi=300, bbox_inches='tight')
     fig.savefig(OUT + name + '.tif', dpi=300, bbox_inches='tight', pil_kwargs={'compression': 'tiff_lzw'})
     plt.close(fig)
-
-
-# ---------------------------------------------------------------- Fig. 2
-def fig2():
-    cols = ['Default 0.8', 'Default 0.9', 'CLM Default', 'Default 1.1', 'Default 1.2']
-    fig, axes = plt.subplots(4, 5, figsize=(7.2, 3.35), subplot_kw=dict(projection=ccrs.PlateCarree()))
-    for i, v in enumerate(['ET', 'FCEV', 'FCTR', 'FGEV']):
-        for j, s in enumerate(cols):
-            ax = axes[i, j]; setup(ax)
-            if s == 'CLM Default':
-                im_a = pmesh(ax, fgrid(D[s][FLX[v]]), abs_cmap, abs_norm)
-            else:
-                im_d = pmesh(ax, rel(s, 'CLM Default', v), div_cmap, div_norm)
-            if i == 0:
-                ax.set_title('CLM Default (mm yr$^{-1}$)' if s == 'CLM Default' else f'{s} vs CLM Default', fontsize=7)
-            if j == 0:
-                ax.text(-0.06, 0.5, SHORT[v], transform=ax.transAxes, rotation=90, va='center', ha='right', fontsize=8)
-    cax1 = fig.add_axes([0.1, 0.075, 0.36, 0.022]); cax2 = fig.add_axes([0.58, 0.075, 0.36, 0.022])
-    cb = fig.colorbar(im_d, cax=cax1, orientation='horizontal', extend='both', ticks=[-10, -6, -2, 2, 6, 10])
-    cb.set_label('Relative difference from CLM Default (%)', fontsize=7); cb.ax.tick_params(labelsize=6)
-    cb2 = fig.colorbar(im_a, cax=cax2, orientation='horizontal', extend='both', ticks=[0, 200, 400, 600, 1000, 1400])
-    cb2.set_label('CLM Default forest flux (mm yr$^{-1}$; brown: net condensation < 0)', fontsize=7); cb2.ax.tick_params(labelsize=6)
-    fig.subplots_adjust(left=0.04, right=0.995, top=0.94, bottom=0.17, wspace=0.03, hspace=0.06)
-    save(fig, 'Figure2_sensitivity_maps')
-
-
-# ---------------------------------------------------------------- Fig. 4
-def fig4():
-    combos = [('GEDI Mean', 'CLM Default'), ('GEDI Max', 'CLM Default'), ('GEDI Max', 'GEDI Mean'), ('GEDI Median', 'GEDI Mean')]
-    fig, axes = plt.subplots(4, 4, figsize=(7.2, 4.0), subplot_kw=dict(projection=ccrs.PlateCarree()))
-    for i, v in enumerate(['ET', 'FCEV', 'FCTR', 'FGEV']):
-        for j, (a, b) in enumerate(combos):
-            ax = axes[i, j]; setup(ax, gedi=True)
-            im = pmesh(ax, rel(a, b, v), div_cmap, div_norm)
-            if i == 0: ax.set_title(f'{a} vs {b}', fontsize=7)
-            if j == 0: ax.text(-0.06, 0.5, SHORT[v], transform=ax.transAxes, rotation=90, va='center', ha='right', fontsize=8)
-    cax = fig.add_axes([0.3, 0.07, 0.42, 0.02])
-    cb = fig.colorbar(im, cax=cax, orientation='horizontal', extend='both', ticks=[-10, -6, -2, 2, 6, 10])
-    cb.set_label('Relative difference (%)', fontsize=7); cb.ax.tick_params(labelsize=6)
-    fig.subplots_adjust(left=0.05, right=0.99, top=0.95, bottom=0.14, wspace=0.03, hspace=0.06)
-    save(fig, 'Figure4_GEDI_maps')
 
 
 # ---------------------------------------------------------------- Fig. 3 (heights on the model grid)
@@ -220,85 +160,9 @@ def fig5():
     json.dump(out, open(OUT + 'Figure5_values.json', 'w'), indent=1)
 
 
-# ---------------------------------------------------------------- SI Fig. S4 (PFT heatmap, ratio of means)
-def figS4():
-    w = m['wt'] * m['area'][m['jx'], m['ix']]
-    comps = [('Default 0.8', 'CLM Default'), ('Default 0.9', 'CLM Default'), ('Default 1.1', 'CLM Default'), ('Default 1.2', 'CLM Default'),
-             ('GEDI Mean', 'CLM Default'), ('GEDI Max', 'CLM Default'), ('GEDI Median', 'CLM Default'),
-             ('GEDI Max', 'GEDI Mean'), ('GEDI Median', 'GEDI Mean')]
-    rlab = [f'{a} vs {b}' for a, b in comps]
-    lv = np.array([-8, -6, -4, -2, -1, -0.5, 0.5, 1, 2, 4, 6, 8])
-    b = plt.get_cmap('RdBu_r')(np.linspace(0, 1, len(lv) + 1)); b[len(lv) // 2] = (0.93, 0.93, 0.93, 1)
-    cm = ListedColormap(b[1:-1]); cm.set_under(b[0]); cm.set_over(b[-1]); nm = BoundaryNorm(lv, cm.N)
-    fig, axes = plt.subplots(2, 2, figsize=(7.2, 6.4))
-    out = {}
-    for k, v in enumerate(['FCEV', 'FGEV', 'FCTR', 'ET']):
-        ax = axes[k // 2, k % 2]
-        M = np.zeros((len(comps), len(PFTS)))
-        for i, (a, bb) in enumerate(comps):
-            for j, (pn, pid) in enumerate(PFTS.items()):
-                sel = f & (m['iv'] == pid)
-                A = np.sum((D[a][FLX[v]] * w)[sel]); B = np.sum((D[bb][FLX[v]] * w)[sel])
-                M[i, j] = 100 * (A - B) / B
-                out[f'{pn}|{a} vs {bb}|{v}'] = float(M[i, j])
-        im = ax.imshow(M, cmap=cm, norm=nm, aspect='auto')
-        for i in range(M.shape[0]):
-            for j in range(M.shape[1]):
-                ax.text(j, i, '0.0' if abs(M[i, j]) < 0.05 else f'{M[i, j]:+.1f}'.replace('-', '−'), ha='center', va='center', fontsize=5.5,
-                        color='white' if abs(M[i, j]) >= 4 else '0.15')
-        ax.axhline(3.5, color='white', lw=2); ax.axhline(6.5, color='white', lw=2)
-        ax.set_xticks(range(len(PFTS))); ax.set_xticklabels(list(PFTS), rotation=40, ha='right', fontsize=6.5)
-        ax.set_yticks(range(len(comps))); ax.set_yticklabels(rlab if k % 2 == 0 else [], fontsize=6.5)
-        ax.tick_params(length=0)
-        for s_ in ax.spines.values():
-            s_.set_visible(False)
-        ax.set_title(f"({'abcd'[k]}) {LBL[v]}", fontsize=8, loc='left', pad=4)
-    cax = fig.add_axes([0.3, 0.035, 0.42, 0.015])
-    cb = fig.colorbar(im, cax=cax, orientation='horizontal', extend='both', ticks=lv)
-    cb.set_label('Relative difference (%)', fontsize=7); cb.ax.tick_params(labelsize=6, length=2); cb.outline.set_linewidth(0.4)
-    fig.subplots_adjust(left=0.2, right=0.99, top=0.96, bottom=0.15, wspace=0.04, hspace=0.34)
-    save(fig, 'FigureS4_PFT_relative_heatmap')
-    json.dump(out, open(OUT + 'FigureS4_values.json', 'w'), indent=1)
-
-
-# ---------------------------------------------------------------- SI: absolute maps for all scenarios
-def figS_abs():
-    sc = ['CLM Default', 'GEDI Mean', 'GEDI Max', 'GEDI Median']
-    fig, axes = plt.subplots(4, 4, figsize=(7.2, 4.0), subplot_kw=dict(projection=ccrs.PlateCarree()))
-    for i, v in enumerate(['ET', 'FCEV', 'FCTR', 'FGEV']):
-        for j, s in enumerate(sc):
-            ax = axes[i, j]; setup(ax); im = pmesh(ax, fgrid(D[s][FLX[v]]), abs_cmap, abs_norm)
-            if i == 0: ax.set_title(s, fontsize=7)
-            if j == 0: ax.text(-0.06, 0.5, SHORT[v], transform=ax.transAxes, rotation=90, va='center', ha='right', fontsize=8)
-    cax = fig.add_axes([0.3, 0.07, 0.42, 0.02])
-    cb = fig.colorbar(im, cax=cax, orientation='horizontal', extend='both', ticks=[0, 200, 400, 600, 1000, 1400])
-    cb.set_label('Forest flux (mm yr$^{-1}$; brown: net condensation < 0)', fontsize=7); cb.ax.tick_params(labelsize=6)
-    fig.subplots_adjust(left=0.05, right=0.99, top=0.95, bottom=0.14, wspace=0.03, hspace=0.06)
-    save(fig, 'FigureS_absolute_maps')
-
-
-def figS_absdiff():
-    combos = [('GEDI Mean', 'CLM Default'), ('GEDI Max', 'CLM Default'), ('GEDI Median', 'CLM Default'), ('GEDI Max', 'GEDI Mean')]
-    lv = np.array([-60, -40, -20, -10, -5, -1, 1, 5, 10, 20, 40, 60])
-    b = plt.get_cmap('BrBG')(np.linspace(0, 1, len(lv) + 1)); b[len(lv) // 2] = (0.93, 0.93, 0.93, 1)
-    cm = ListedColormap(b[1:-1]); cm.set_under(b[0]); cm.set_over(b[-1]); nm = BoundaryNorm(lv, cm.N)
-    fig, axes = plt.subplots(4, 4, figsize=(7.2, 4.0), subplot_kw=dict(projection=ccrs.PlateCarree()))
-    for i, v in enumerate(['ET', 'FCEV', 'FCTR', 'FGEV']):
-        for j, (a, bb) in enumerate(combos):
-            ax = axes[i, j]; setup(ax)
-            im = pmesh(ax, fgrid(D[a][FLX[v]]) - fgrid(D[bb][FLX[v]]), cm, nm)
-            if i == 0: ax.set_title(f'{a} vs {bb}', fontsize=7)
-            if j == 0: ax.text(-0.06, 0.5, SHORT[v], transform=ax.transAxes, rotation=90, va='center', ha='right', fontsize=8)
-    cax = fig.add_axes([0.3, 0.07, 0.42, 0.02])
-    cb = fig.colorbar(im, cax=cax, orientation='horizontal', extend='both', ticks=lv)
-    cb.set_label('Absolute difference in forest flux (mm yr$^{-1}$)', fontsize=7); cb.ax.tick_params(labelsize=6)
-    fig.subplots_adjust(left=0.05, right=0.99, top=0.95, bottom=0.14, wspace=0.03, hspace=0.06)
-    save(fig, 'FigureS_absolute_difference_maps')
-
-
 if __name__ == '__main__':
     import sys
-    which = sys.argv[1:] or ['2', '3', '4', '5', 'abs', 'absdiff']
+    which = sys.argv[1:] or ['3', '5']
     for w_ in which:
-        {'2': fig2, '3': fig3, '4': fig4, '5': fig5, 'S4': figS4, 'abs': figS_abs, 'absdiff': figS_absdiff}[w_]()
+        {'3': fig3, '5': fig5}[w_]()
         print('done', w_, flush=True)

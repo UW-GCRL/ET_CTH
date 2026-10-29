@@ -185,7 +185,7 @@ for bl, (BLAT, BLON) in {'5deg': (3, 2), '10deg': (5, 4), '20deg': (11, 8)}.item
     for k, qq in zip(keys, q):
         Q[f'blk|{bl}|{k[0]} vs {k[1]}|{k[2]}'] = [float(P[k]), float(min(qq, 1)), float(CI[k][0]), float(CI[k][1])]
     Q[f'blk|{bl}|nblocks'] = int(len(blocks))
-# potential-temperature pathway (Text S3 / A20)
+# potential-temperature pathway (Text S3)
 R = np.where((iv == 4) | (iv == 5), 0.075, 0.055) + 0.67
 for a in ['Default 1.2', 'Default 0.8']:
     Q[f'dtheta|{a}'] = wm(0.0098 * R * (H[a] - H['CLM Default']), f)

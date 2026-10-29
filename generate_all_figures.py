@@ -179,7 +179,7 @@ colors_cmap[95:105] = (1, 1, 1, 1)
 white_center_cmap = ListedColormap(colors_cmap)
 
 variables_plot = ['ET', 'FCEV', 'FCTR', 'FGEV']
-ylabel_map = {'ET': 'ET', 'FCEV': 'Canopy EV', 'FCTR': 'Canopy TR', 'FGEV': 'Ground EV'}
+ylabel_map = {'ET': 'ET', 'FCEV': 'FCEV', 'FCTR': 'FCTR', 'FGEV': 'FGEV'}
 
 fig, axes = plt.subplots(len(variables_plot), len(combinations), figsize=(22, 18),
                          subplot_kw=dict(projection=projection), dpi=300)

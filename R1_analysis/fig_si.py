@@ -1,5 +1,5 @@
-"""New SI figures for AFM R1: canopy water balance & seasonality, forcing-year robustness,
-emulator validation, stomatal (GPP vs transpiration) diagnostic."""
+"""Figs. S4 to S6 of the revised manuscript (AFM R1): canopy water balance and seasonality (Fig. S4),
+forcing-year robustness (Fig. S5), emulator validation and stomatal (GPP vs transpiration) diagnostic (Fig. S6)."""
 import os, json
 import numpy as np
 import matplotlib
@@ -25,7 +25,7 @@ def style(ax):
     ax.spines[['top', 'right']].set_visible(False); ax.grid(lw=0.3, color='0.9')
 
 
-# ------------------------------------------------ canopy water balance + seasonality
+# ------------------------------------------------ Fig. S4: canopy water balance + seasonality
 def fig_wb():
     A = {}
     for s in ['CLM Default', 'Default 1.2', 'GEDI Max', 'GEDI Mean']:
@@ -60,10 +60,10 @@ def fig_wb():
         ax.axhline(0, color='0.3', lw=0.5); ax.set_xticks(range(1, 13)); ax.set_xticklabels('JFMAMJJASOND')
         ax.set_ylabel('mm month$^{-1}$ (per unit forest area)'); ax.set_title(ttl, loc='left', fontsize=8); style(ax)
         if j == 0: ax.legend(frameon=False, fontsize=6)
-    fig.tight_layout(); save(fig, 'FigureS_canopy_water_balance_seasonal')
+    fig.tight_layout(); save(fig, 'FigureS4_canopy_water_balance_seasonal')
 
 
-# ------------------------------------------------ forcing-year robustness
+# ------------------------------------------------ Fig. S5: forcing-year robustness
 def fig_years():
     r = json.load(open('an1_results.json'))['forcing_year_robustness']
     keys = list(r)
@@ -81,10 +81,10 @@ def fig_years():
     axes[-1].plot([], [], 'o', color=CAT[0], ms=3, label='10-yr mean (cycle 4)'); axes[-1].plot([], [], 'x', color=CAT[1], ms=3, label='10-yr mean (cycle 3)')
     axes[-1].plot([], [], color='0.3', lw=1.6, label='range of single years')
     fig.legend(*axes[-1].get_legend_handles_labels(), frameon=False, fontsize=6.5, loc='lower center', ncol=3)   # below the panels, clear of the data
-    fig.tight_layout(rect=(0, 0.06, 1, 1)); save(fig, 'FigureS_forcing_year_robustness')
+    fig.tight_layout(rect=(0, 0.06, 1, 1)); save(fig, 'FigureS5_forcing_year_robustness')
 
 
-# ------------------------------------------------ emulator validation + stomatal diagnostic
+# ------------------------------------------------ Fig. S6: emulator validation + stomatal diagnostic
 def fig_emu():
     D = {s: load_scen(s) for s in SCEN}
     emu = np.load('emulator_coef.npz')
@@ -114,7 +114,7 @@ def fig_emu():
     ax.axhline(0, color='0.3', lw=0.5); ax.set_xticks(x); ax.set_xticklabels(names, rotation=45, ha='right', fontsize=6.5)
     ax.set_ylabel('Default 1.2 vs CLM Default (%)'); ax.set_title('(c) Transpiration and GPP response', loc='left', fontsize=8)
     ax.legend(frameon=False, fontsize=6, loc='lower right', bbox_to_anchor=(1.0, 0.0)); style(ax)
-    fig.tight_layout(); save(fig, 'FigureS_emulator_and_stomatal')
+    fig.tight_layout(); save(fig, 'FigureS6_emulator_and_stomatal')
 
 
 if __name__ == '__main__':
