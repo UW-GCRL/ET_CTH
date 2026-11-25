@@ -2,9 +2,12 @@
 Regenerate spatial mapping figures with fixed title spacing.
 - Figure "experimental scenarios": 4 rows x 4 cols (CLM Default + 3 GEDI scenarios)
 - Figure "multisource scenarios": 4 rows x 4 cols (all % difference)
-- Figure absolute difference: 4 rows x 4 cols (CLM Default + 3 abs diff)
-- Figure absolute values: 4 rows x 4 cols (all absolute mm/month)
+- Figure absolute difference (Fig. S3): 4 rows x 4 cols (CLM Default + 3 abs diff)
+- Figure absolute values (Fig. S2): 4 rows x 4 cols (all absolute mm/month)
 - Figure 4 (ET comparison): 4 rows x 4 cols with subplot labels
+
+All values in mm/month are the CLM5 water-flux outputs (QVEGE, QVEGT, QFLX_EVAP_TOT), not latent heat
+multiplied by a constant. The differences between scenarios are in W/m2 or %, from the latent heat outputs.
 """
 import netCDF4
 import os
@@ -18,7 +21,7 @@ from matplotlib import ticker
 import sys
 sys.stdout.reconfigure(encoding='utf-8')
 
-OUT_DIR = 'C:/Users/hyou34/Documents/CTH_ET/figures_new_version/'
+OUT_DIR = os.environ.get('ETCTH_FIGURES_ROOT', 'C:/Users/hyou34/Documents/CTH_ET/figures_new_version/')
 FINAL_DATA = 'G:/Hangkai/CTH_ET project/Final_data/'
 
 # ============================================================
@@ -31,7 +34,9 @@ scenario_mapping_EX = {
     'GEDI Median': 'GEDI Median.nc',
 }
 
-variable_names = ['FCEV', 'FCTR', 'FGEV']
+variable_names = ['FCEV', 'FCTR', 'FGEV']                 # latent heat (W/m2)
+water_names = ['QVEGE', 'QVEGT', 'QFLX_EVAP_TOT']         # water fluxes (mm/s)
+SEC_PER_MONTH = 86400.0 * 365 / 12                        # mean month of CLM's 365-day year
 
 pft_names = {
     "NET Temperate": 1, "NET Boreal": 2, "NDT Boreal": 3,
@@ -45,7 +50,7 @@ for scenario, fname in scenario_mapping_EX.items():
     data_EX[scenario] = {}
     nc_file = os.path.join(FINAL_DATA, fname)
     with netCDF4.Dataset(nc_file, 'r') as ds:
-        for var in variable_names:
+        for var in variable_names + water_names:
             raw = ds.variables[var][:]
             data_EX[scenario][var] = np.mean(raw, axis=0) if raw.ndim == 2 else raw
         data_EX[scenario]['ET'] = data_EX[scenario]['FCEV'] + data_EX[scenario]['FCTR'] + data_EX[scenario]['FGEV']
@@ -71,10 +76,10 @@ with netCDF4.Dataset(os.path.join(FINAL_DATA, 'CLM Default.nc'), 'r') as ds:
         lon2d, lat2d = np.meshgrid(lon1d, lat1d)
 
 # Grid to 2D
-annual_data_EX = {var: {} for var in variable_names + ['ET']}
+annual_data_EX = {var: {} for var in variable_names + ['ET'] + water_names}
 for scenario in scenario_mapping_EX:
     meta = pft_meta[scenario]
-    for variable in variable_names + ['ET']:
+    for variable in variable_names + ['ET'] + water_names:
         grid_2d = np.zeros(grid_shape)
         values = data_EX[scenario][variable] * meta['pfts1d_wtgcell']
         for pft_name, pft_id in pft_names.items():
@@ -128,6 +133,14 @@ def get_et_data(scenario):
             annual_data_EX['FGEV'][scenario])
 
 
+def get_mm_month(variable, scenario):
+    """Water flux in mm/month from the CLM5 water-flux outputs (NaN where there is no forest)."""
+    qe, qt, qtot = (annual_data_EX[v][scenario] for v in water_names)
+    flux = {'ET': qtot, 'FCEV': qe, 'FCTR': qt, 'FGEV': qtot - qe - qt}[variable] * SEC_PER_MONTH
+    flux[flux == 0] = np.nan
+    return flux
+
+
 # ============================================================
 # Figure 1: Experimental Scenarios (4 rows x 4 cols)
 # Col 0: CLM Default absolute (mm/month)
@@ -145,9 +158,7 @@ for j, variable in enumerate(variables):
         data_et = get_et_data(scenario) if variable == 'ET' else annual_data_EX[variable][scenario]
 
         if scenario == 'CLM Default':
-            base_data = data_et.copy()
-            base_data[data_et == 0] = np.nan
-            plot_data = np.ma.masked_invalid(base_data * 1.0562)
+            plot_data = np.ma.masked_invalid(get_mm_month(variable, scenario))
             levels = np.linspace(np.nanmin(plot_data), np.nanmax(plot_data), num=21)
             mn, mx = np.nanmin(plot_data), np.nanmax(plot_data)
             mid = 0.5 * (mn + mx)
@@ -253,9 +264,7 @@ for j, variable in enumerate(variables):
         data_et = get_et_data(scenario) if variable == 'ET' else annual_data_EX[variable][scenario]
 
         if scenario == 'CLM Default':
-            base_data = data_et.copy()
-            base_data[data_et == 0] = np.nan
-            plot_data = np.ma.masked_invalid(base_data * 1.0562)
+            plot_data = np.ma.masked_invalid(get_mm_month(variable, scenario))
             levels = np.linspace(np.nanmin(plot_data), np.nanmax(plot_data), num=21)
             mn, mx = np.nanmin(plot_data), np.nanmax(plot_data)
             mid = 0.5 * (mn + mx)
@@ -294,58 +303,58 @@ for j, variable in enumerate(variables):
 
 plt.subplots_adjust(hspace=-0.55, wspace=0.08)
 plt.savefig(os.path.join(OUT_DIR, 'Figure_absolute_difference.tiff'),
-            dpi=300, bbox_inches='tight')
+            dpi=300, bbox_inches='tight', pil_kwargs={'compression': 'tiff_lzw'})
 plt.close()
 print('  Saved.')
 
 # ============================================================
-# Figure 4: Absolute values for all scenarios (mm/month)
+# Figure 4: Absolute values for all scenarios (mm/month), Fig. S2
 # ============================================================
 print('Generating absolute values figure...')
 
-fig4, axes4 = plt.subplots(4, 4, figsize=(24, 20),
+fig4, axes4 = plt.subplots(4, 5, figsize=(25, 18),
                            subplot_kw=dict(projection=projection), dpi=200)
 
 for j, variable in enumerate(variables):
     for i, scenario in enumerate(scenario_order):
         ax = axes4[j, i]
 
-        data_et = get_et_data(scenario) if variable == 'ET' else annual_data_EX[variable][scenario]
-        base_data = data_et.copy()
-        base_data[data_et == 0] = np.nan
-        plot_data = np.ma.masked_invalid(base_data * 1.0562)
+        plot_data = np.ma.masked_invalid(get_mm_month(variable, scenario))
         levels = np.linspace(np.nanmin(plot_data), np.nanmax(plot_data), num=21)
         mn, mx = np.nanmin(plot_data), np.nanmax(plot_data)
         mid = 0.5 * (mn + mx)
         cbar_ticks = [mn, 0.5*(mid+mn), mid, 0.5*(mid+mx), mx]
-        colormap = plt.get_cmap('afmhot_r')
 
-        if scenario == 'CLM Default':
-            title = 'CLM Default\n(mm/month)'
-        else:
-            title = f'{scenario}\n(mm/month)'
-
-        cs = ax.contourf(lon2d, lat2d, plot_data, levels=levels, cmap=colormap,
+        cs = ax.contourf(lon2d, lat2d, plot_data, levels=levels, cmap=plt.get_cmap('afmhot_r'),
                          extend='both', transform=projection)
         ax.coastlines()
-        add_gridlines(ax, show_xlabel=(j == 0), show_ylabel=(i == 0))
+        gl = ax.gridlines(draw_labels=True, dms=True, x_inline=False, y_inline=False,
+                          linewidth=0.5, color='gray', alpha=0.5,
+                          xlocs=[-120, 0, 120], ylocs=[-90, -45, 0, 45, 90])
+        gl.xlabel_style['size'] = 15 if j == 0 else 0
+        gl.ylabel_style['size'] = 15 if i == 0 else 0
+        gl.bottom_labels = False
+        gl.right_labels = False
 
         cbar = plt.colorbar(cs, ax=ax, orientation='horizontal', pad=0.005, shrink=0.6, ticks=cbar_ticks)
         cbar.formatter = ticker.FormatStrFormatter('%.d')
-        cbar.ax.tick_params(labelsize=14)
+        cbar.ax.tick_params(labelsize=18)
 
-        add_subplot_label(ax, j, i)
+        ax.text(0.02, 0.95, f'({row_labels[j]}.{i+1})', transform=ax.transAxes, fontsize=14,
+                fontweight='bold', va='top', ha='left',
+                bbox=dict(boxstyle='round,pad=0.2', facecolor='white', alpha=0.8, edgecolor='gray'))
 
         if j == 0:
-            ax.set_title(title, fontsize=16, pad=10)
+            ax.set_title(f'{scenario} (mm/month)', fontsize=20)
 
         if i == 0:
             ax.annotate(ylabel_map[variable], xy=(-0.23, 0.5), xycoords='axes fraction',
-                        fontsize=22, rotation=90, va='center')
+                        fontsize=25, rotation=90, va='center')
+    axes4[j, 4].set_visible(False)
 
-plt.subplots_adjust(hspace=-0.55, wspace=0.08)
+plt.subplots_adjust(hspace=-0.65, wspace=0.03)
 plt.savefig(os.path.join(OUT_DIR, 'Figure_absolute_values.tiff'),
-            dpi=300, bbox_inches='tight')
+            dpi=300, bbox_inches='tight', pil_kwargs={'compression': 'tiff_lzw'})
 plt.close()
 print('  Saved.')
 
