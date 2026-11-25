@@ -1,8 +1,8 @@
-# Structural Controls on Forest Evapotranspiration from Canopy Height
+# The role of canopy height in global forest evapotranspiration and its partitioning
 
 Code and analysis for the manuscript:
 
-**"Structural Controls on Forest Evapotranspiration from Canopy Height"**
+**"The role of canopy height in global forest evapotranspiration and its partitioning"**
 
 Hangkai You, Fa Li, Dalei Hao, Benjamin Dechant, Zhenpeng Zuo, Taejin Park, Meng Luo, Min Chen*
 
@@ -34,7 +34,7 @@ Forest canopy height is a fundamental control on aerodynamic conductance and sur
 | Table S5 | Parameter values of `clm50_params.c240208.nc` (not computed by the scripts) | [`R1_analysis/tables/TableS5_CLM5_height_parameters.csv`](R1_analysis/tables/TableS5_CLM5_height_parameters.csv) |
 | Numbers in the text | `R1_analysis/text_numbers.py` and the analysis scripts (see [`R1_analysis/README.md`](R1_analysis/README.md)) | `text_numbers.json` |
 
-The maps of Figures 2 and 4 and Figs. S2 and S3 show the values of individual grid cells, which do not depend on the area weights of the global and PFT-level means (see [Statistical Methods](#statistical-methods-revised-manuscript)). `generate_maps_v3.py` also writes a version of `Figure_4_ET_comparison_maps` with panel letters and longer row labels; Figure 4 is the version written by `generate_all_figures.py`.
+The maps of Figures 2 and 4 and Figs. S2 and S3 show the values of individual grid cells, which do not depend on the area weights of the global and PFT-level means (see [Statistical Methods](#statistical-methods-revised-manuscript)). The values in mm/month in these maps (center column of Figure 2, all panels of Fig. S2 and the first column of Fig. S3) are the CLM5 water-flux outputs QVEGE, QVEGT and QFLX_EVAP_TOT, multiplied by the mean month of CLM5's 365-day calendar (86400 x 365/12 s). The earlier-draft notebooks and the stored scenario maps of the first submission use latent heat multiplied by a constant (1.0562) instead; they are not used in the revised manuscript. `generate_maps_v3.py` also writes a version of `Figure_4_ET_comparison_maps` with panel letters and longer row labels; Figure 4 is the version written by `generate_all_figures.py`.
 
 ## Model Configuration
 
@@ -64,7 +64,7 @@ The maps of Figures 2 and 4 and Figs. S2 and S3 show the values of individual gr
 - **Default (ICESat)**: Simard et al. (2011), a global 1 km map produced from 2005 observations of ICESat-1 GLAS (RH100 waveform metric)
 - **GEDI-derived**: Lang et al. (2023), ETH Global Canopy Height at 10 m resolution, from GEDI RH98 observations and Sentinel-2 imagery (circa 2020)
 - **PFT map**: 500 m, derived from the MODIS land cover type product and WorldClim V1 climate data on Google Earth Engine using [build_surface_dataset_for_ELM](https://github.com/daleihao/build_surface_dataset_for_ELM) (`ELM_PFT_{year}-WGS84-merged.tif`; PFTs 1-8 are trees)
-- Two-step aggregation: (1) 10 m canopy height aggregated to the 500 m grid using max, mean, or median; (2) for each forest PFT, the 500 m heights of all pixels of that PFT averaged with equal weight within fixed blocks of 450 x 600 pixels (1.875 x 2.5 degrees at the 1/240 degree pixel size; 96 x 144 blocks, one for each model grid cell). Where a forest PFT of the CLM5 surface dataset was absent from the 500 m PFT map within the block, the CLM5 default height was retained.
+- Two-step aggregation: (1) 10 m canopy height aggregated to the 500 m grid (80,150 x 40,076 pixels of about 0.0045 degrees, 500 m at the equator) using max, mean, or median; (2) for each forest PFT, the 500 m heights of all pixels of that PFT averaged with equal weight within equal blocks of 1.875 x 2.5 degrees (96 x 144 blocks, one for each model grid cell; about 417 x 557 pixels) and stored as whole meters. The blocks are offset from the model cells by 1.25 degrees (half a cell) in longitude and by up to 0.94 degrees in latitude, equally in the three GEDI-based inputs (see [`canopy_height_preprocessing/`](canopy_height_preprocessing/README.md)). Where a forest PFT of the CLM5 surface dataset was absent from the 500 m PFT map within the block, the CLM5 default height was retained.
 - Height threshold applied during Step 1: > 0 m (excludes zero-height pixels and no-data values, so GEDI Mean and GEDI Median describe vegetated pixels)
 
 ## Repository Structure
@@ -77,14 +77,16 @@ Global and PFT-level means are weighted by the land area of each patch (`pfts1d_
 
 ### Canopy Height Preprocessing (`canopy_height_preprocessing/`)
 
-Reference scripts used to aggregate ETH 10 m canopy height to the CLM5
+Scripts used to aggregate ETH 10 m canopy height to the CLM5
 grid per PFT and to modify the CLM5 surface data. See the folder's README
 for full workflow details.
 
 | File | Description |
 |---|---|
-| `input_data_generation_hangkai.py` | Python reference: 500 m canopy height + 500 m PFT map -> CLM5 1.9 x 2.5 grid per PFT; writes modified surfdata. |
-| `cht_with_pft.m` | MATLAB equivalent of the same aggregation logic. |
+| `cth_with_pft.m` | MATLAB, used for the simulations: 500 m canopy height + 500 m PFT map -> block means per PFT. |
+| `CTH_for_surface_data_replace.m` | MATLAB, used for the simulations: writes the block heights into the CLM5 surface dataset. |
+| `input_data_generation_hangkai.py` | Earlier Python version of the same steps (1/240 degree grid), not used for the simulations. |
+| `cht_with_pft.m` | Earlier version of `cth_with_pft.m`, kept for reference. |
 
 ### CLM5 output (`clm_output/`)
 
@@ -96,7 +98,7 @@ The scripts and notebooks below produced the results of the first submission and
 
 | Script | Description |
 |---|---|
-| `generate_maps_v3.py` | Spatial maps: absolute values (mm/month; Fig. S2), absolute differences (W/m2; Fig. S3), experimental scenarios (CLM Default absolute + % diff) and multisource scenarios |
+| `generate_maps_v3.py` | Spatial maps: absolute values (mm/month; Fig. S2), absolute differences (W/m2; Fig. S3), experimental scenarios (CLM Default absolute + % diff) and multisource scenarios; mm/month values are the CLM5 water-flux outputs |
 | `generate_heatmaps_v2.py` | PFT-level heatmaps (2x2) with paired t-test significance markers |
 | `generate_tables.py` | Global and PFT-scale statistical summary tables (CSV) |
 | `generate_all_figures.py` | Combined figure generation, including Figure 4 (`Figure_4_ET_comparison_maps`), and old-vs-new comparison analysis |
